@@ -1,0 +1,13 @@
+{
+  "name": "AeroNCR PoC",
+  "image": "mcr.microsoft.com/devcontainers/python:1-3.12-bookworm",
+  "postCreateCommand": "pip install -r requirements.txt",
+  "postStartCommand": "bash -lc 'pkill -f \"uvicorn app.main:app\" 2>/dev/null || true; nohup uvicorn app.main:app --host 0.0.0.0 --port 8088 >/tmp/aeroncr.log 2>&1 &'",
+  "forwardPorts": [8088],
+  "portsAttributes": {
+    "8088": {
+      "label": "AeroNCR UI",
+      "onAutoForward": "openBrowser"
+    }
+  }
+}
