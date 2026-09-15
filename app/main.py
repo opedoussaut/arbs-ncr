@@ -4,10 +4,10 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .engine import InvestigationEngine
-from .models import ComparisonResponse, NCRInput
+from .models import CaseInput, ComparisonResponse
 
 BASE = Path(__file__).parent
-app = FastAPI(title="AeroNCR Benchmark", version="0.1.0")
+app = FastAPI(title="Lean AI Benchmark", version="0.2.0")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 engine = InvestigationEngine()
 
@@ -19,9 +19,13 @@ async def home():
 
 @app.get("/api/health")
 async def health():
-    return {"ok": True, "llm_mode": "live" if engine.reasoner.live else "simulated"}
+    return {
+        "ok": True,
+        "llm_mode": "live" if engine.reasoner.live else "simulated",
+        "scenarios": ["aerospace_ncr", "ai_factory_anomaly"],
+    }
 
 
 @app.post("/api/investigate", response_model=ComparisonResponse)
-async def investigate(ncr: NCRInput):
-    return await engine.compare(ncr)
+async def investigate(case: CaseInput):
+    return await engine.compare(case)
