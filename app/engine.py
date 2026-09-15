@@ -12,11 +12,11 @@ load_dotenv()
 
 try:
     from openai import AsyncOpenAI
-except ImportError:  # optional until live LLM mode is enabled
+except ImportError:
     AsyncOpenAI = None
 
 from .data_factory import build_source_universe, nifi_reduce
-from .models import AgentStep, ComparisonResponse, InvestigationResult, Metrics, NCRInput
+from .models import AgentStep, CaseInput, ComparisonResponse, InvestigationResult, Metrics
 
 
 @dataclass
@@ -47,10 +47,12 @@ class Reasoner:
             approx_out = max(1, len(finding) // 4)
             return finding, LLMStats(approx_in, approx_out, 1, self._cost(approx_in, approx_out))
 
+        case = context.get("case") or context.get("ncr") or {}
+        domain = "AI Factory infrastructure" if case.get("scenario") == "ai_factory_anomaly" else "aerospace manufacturing"
         prompt = (
-            f"You are the {role} in an aerospace manufacturing non-conformance investigation. "
-            "Use only the supplied synthetic evidence. Be concise, evidence-led, and never make a final airworthiness disposition; "
-            "that remains a human engineering decision.\n\n"
+            f"You are the {role} in a synthetic {domain} investigation. "
+            "Use only the supplied synthetic evidence. Be concise and evidence-led. "
+            "Do not make irreversible operational, safety, quality or engineering decisions; those remain human decisions.\n\n"
             f"Question: {question}\n\nEvidence:\n{json.dumps(context, default=str)}"
         )
         response = await self.client.responses.create(model=self.model, input=prompt)
@@ -64,7 +66,21 @@ class Reasoner:
 
     @staticmethod
     def _simulate(role: str, context: dict[str, Any]) -> str:
+        case = context.get("case") or context.get("ncr") or {}
+        scenario = case.get("scenario", "aerospace_ncr")
         r = role.lower()
+
+        if scenario == "ai_factory_anomaly":
+            if "thermal" in r:
+                return "The target rack shows sustained GPU/HBM temperature elevation, inlet-air temperature above target, repeated throttling and coolant flow below the configured minimum. The thermal signature is coherent across rack and cooling-loop evidence."
+            if "infrastructure" in r:
+                return "Rack power is close to design load, but the strongest infrastructure deviation is reduced branch flow while the associated CDU is running at high pump and valve demand. This points to a local flow imbalance or branch restriction rather than insufficient commanded cooling effort."
+            if "network" in r:
+                return "Fabric utilization increases with workload, but CRC errors and retries remain too low to explain the observed throughput loss. Network contention may add noise, but the evidence does not support it as the primary cause."
+            if "knowledge" in r:
+                return "The K&KH corpus and similar historical incidents link the same thermal-throttle-low-flow pattern to rack branch restrictions and CDU balancing issues. The applicable runbook recommends validating flow, valve position and branch integrity before changing GPU or workload settings."
+            return "Evidence converges on a cooling-distribution issue affecting the target rack, most likely branch restriction or imbalance on the associated CDU loop. Reduce or drain workload on the rack, verify branch flow and valve state, compare neighboring racks, and route remediation through authorized infrastructure operations."
+
         if "quality" in r:
             return "Four adjacent dimensional results breach the allowed upper tolerance; the pattern is clustered rather than random. Similar historical NCRs exist and should be reviewed before disposition."
         if "manufacturing" in r:
@@ -78,11 +94,11 @@ class InvestigationEngine:
     def __init__(self):
         self.reasoner = Reasoner()
 
-    async def compare(self, ncr: NCRInput) -> ComparisonResponse:
-        source = build_source_universe(ncr)
+    async def compare(self, case: CaseInput) -> ComparisonResponse:
+        source = build_source_universe(case)
         baseline, nifi = await asyncio.gather(
-            self._run_lane(ncr, source, "baseline"),
-            self._run_lane(ncr, source, "nifi"),
+            self._run_lane(case, source, "baseline"),
+            self._run_lane(case, source, "nifi"),
         )
         b, n = baseline.metrics, nifi.metrics
         savings = pct(b.estimated_cost_usd - n.estimated_cost_usd, b.estimated_cost_usd)
@@ -90,48 +106,45 @@ class InvestigationEngine:
         latency_red = pct(b.latency_ms - n.latency_ms, b.latency_ms)
         tool_red = pct(b.tool_calls - n.tool_calls, b.tool_calls)
         headline = (
-            f"NiFi-assisted lane uses {token_red:.0f}% less agent input context and "
-            f"{tool_red:.0f}% fewer agent-facing tool calls in this run."
+            f"Lean preprocessing uses {token_red:.0f}% less agent input context and "
+            f"{tool_red:.0f}% fewer agent-facing tool calls in this synthetic run."
         )
         return ComparisonResponse(
-            ncr=ncr, baseline=baseline, nifi=nifi, headline=headline,
-            savings_pct=round(savings, 1), token_reduction_pct=round(token_red, 1),
-            latency_reduction_pct=round(latency_red, 1), tool_call_reduction_pct=round(tool_red, 1),
+            case=case,
+            baseline=baseline,
+            nifi=nifi,
+            headline=headline,
+            savings_pct=round(savings, 1),
+            token_reduction_pct=round(token_red, 1),
+            latency_reduction_pct=round(latency_red, 1),
+            tool_call_reduction_pct=round(tool_red, 1),
         )
 
-    async def _run_lane(self, ncr: NCRInput, source: dict, lane: str) -> InvestigationResult:
+    async def _run_lane(self, case: CaseInput, source: dict, lane: str) -> InvestigationResult:
         started = time.perf_counter()
         source_blob = json.dumps(source)
+        ai_factory = case.scenario == "ai_factory_anomaly"
+
         if lane == "nifi":
-            context, provenance = nifi_reduce(source)
-            deterministic_steps = 8
-            tool_calls, api_calls = 2, 6
-            context_blob = json.dumps(context)
-            context_for_agents = context
+            context_for_agents, provenance = nifi_reduce(source)
+            deterministic_steps = 11 if ai_factory else 8
+            tool_calls = 3 if ai_factory else 2
+            api_calls = 8 if ai_factory else 6
+            context_blob = json.dumps(context_for_agents)
         else:
-            # Baseline deliberately leaves cross-source reduction to the agent/tool layer.
-            context_for_agents = {
-                "ncr": source["ncr"],
-                "engineering": source["engineering"],
-                "supplier": source["supplier"],
-                "telemetry": source["telemetry"],
-                "historic_ncrs": source["historic_ncrs"],
-                "inspections": source["inspections"],
-                "operations": source["operations"],
-            }
-            provenance = ["Agent/tool layer queried each enterprise source directly"]
+            # Baseline: all cross-source selection/reduction remains in the agent/tool layer.
+            context_for_agents = source
+            provenance = ["Agent/tool layer queried the raw corpus and operational sources directly"]
             deterministic_steps = 1
-            tool_calls, api_calls = 14, 14
+            tool_calls = 18 if ai_factory else 14
+            api_calls = 18 if ai_factory else 14
             context_blob = json.dumps(context_for_agents)
 
-        questions = [
-            ("Quality Agent", "Assess dimensional evidence and historical quality patterns."),
-            ("Manufacturing Agent", "Assess machine/process evidence and likely manufacturing cause."),
-            ("Design Agent", "Assess engineering-definition significance and required human gates."),
-        ]
+        questions = self._questions(case.scenario)
         findings = await asyncio.gather(*[
-            self.reasoner.ask(role, context_for_agents, q) for role, q in questions
+            self.reasoner.ask(role, context_for_agents, question) for role, question in questions
         ])
+
         stats = LLMStats()
         steps: list[AgentStep] = []
         for (role, _), (text, st) in zip(questions, findings):
@@ -143,37 +156,59 @@ class InvestigationEngine:
                 agent=role.replace(" Agent", ""),
                 title=role,
                 detail=text,
-                evidence_count=6 if lane == "nifi" else 18,
-                duration_ms=260 if lane == "nifi" else 510,
+                evidence_count=(7 if ai_factory else 6) if lane == "nifi" else (24 if ai_factory else 18),
+                duration_ms=(280 if lane == "nifi" else 540),
             ))
 
         supervisor_context = {
-            "ncr": ncr.model_dump(),
+            "case": case.model_dump(),
             "specialist_findings": [x.detail for x in steps],
             "provenance": provenance,
         }
-        synthesis, sst = await self.reasoner.ask("Supervisor Agent", supervisor_context, "Synthesize the safest next investigation action.")
+        synthesis, sst = await self.reasoner.ask(
+            "Supervisor Agent",
+            supervisor_context,
+            "Synthesize the most evidence-supported cause and safest next investigation actions.",
+        )
         stats.input_tokens += sst.input_tokens
         stats.output_tokens += sst.output_tokens
         stats.calls += sst.calls
         stats.cost_usd += sst.cost_usd
         steps.append(AgentStep(
-            agent="Supervisor", title="Supervisor synthesis", detail=synthesis,
-            evidence_count=len(provenance), duration_ms=290 if lane == "nifi" else 420,
+            agent="Supervisor",
+            title="Supervisor synthesis",
+            detail=synthesis,
+            evidence_count=len(provenance),
+            duration_ms=300 if lane == "nifi" else 440,
         ))
 
         elapsed_real = int((time.perf_counter() - started) * 1000)
-        # In deterministic simulation mode we show a modeled E2E latency so the UI remains useful;
-        # live mode uses the measured wall-clock time.
         modeled_latency = (
-            1650 + stats.input_tokens // 95 + tool_calls * 105
-            if lane == "baseline" else
-            920 + stats.input_tokens // 115 + tool_calls * 70
+            1800 + stats.input_tokens // 90 + tool_calls * 105
+            if lane == "baseline"
+            else 980 + stats.input_tokens // 115 + tool_calls * 70
         )
         latency = elapsed_real if self.reasoner.live else modeled_latency
         retries = 1 if lane == "baseline" else 0
-        confidence = .88 if lane == "nifi" else .78
-        evidence_precision = .92 if lane == "nifi" else .61
+
+        if ai_factory:
+            likely_cause = "Cooling branch restriction / CDU flow imbalance"
+            recommendation = (
+                "Drain or reduce workload on the affected rack; validate rack branch flow and valve state; "
+                "compare neighboring racks on the same CDU; inspect for restriction/imbalance before changing GPU, network or scheduler settings."
+            )
+            human_gate = "Infrastructure Operations must approve workload drain and any cooling-loop intervention."
+            confidence = .90 if lane == "nifi" else .77
+            evidence_precision = .94 if lane == "nifi" else .56
+        else:
+            likely_cause = "Progressive tool wear / spindle drift"
+            recommendation = (
+                "Quarantine affected production scope; verify tool condition and spindle calibration; inspect adjacent holes and same-tool output; "
+                "prepare the evidence pack for engineering disposition."
+            )
+            human_gate = "Final disposition requires authorized Quality/Engineering approval."
+            confidence = .88 if lane == "nifi" else .78
+            evidence_precision = .92 if lane == "nifi" else .61
 
         metrics = Metrics(
             source_bytes=len(source_blob.encode()),
@@ -193,16 +228,31 @@ class InvestigationEngine:
 
         return InvestigationResult(
             lane=lane,
-            title="NiFi-assisted" if lane == "nifi" else "Agent-only baseline",
+            title="Lean / NiFi-assisted" if lane == "nifi" else "Agent-only baseline",
             summary=synthesis,
             confidence=confidence,
-            likely_cause="Progressive tool wear / spindle drift",
-            recommendation="Quarantine affected production scope; verify tool condition and spindle calibration; inspect adjacent holes and same-tool output; prepare evidence pack for engineering disposition.",
-            human_gate="Final disposition requires authorized Quality/Engineering approval.",
+            likely_cause=likely_cause,
+            recommendation=recommendation,
+            human_gate=human_gate,
             steps=steps,
             metrics=metrics,
             evidence=provenance,
         )
+
+    @staticmethod
+    def _questions(scenario: str) -> list[tuple[str, str]]:
+        if scenario == "ai_factory_anomaly":
+            return [
+                ("Thermal Agent", "Assess GPU/rack thermal evidence and throttling signature."),
+                ("Infrastructure Agent", "Assess power, cooling-loop and rack infrastructure evidence."),
+                ("Network Agent", "Assess whether fabric behavior can explain the performance degradation."),
+                ("Knowledge Agent", "Use relevant standards, runbooks, lessons learned and historical incidents to identify known patterns."),
+            ]
+        return [
+            ("Quality Agent", "Assess dimensional evidence and historical quality patterns."),
+            ("Manufacturing Agent", "Assess machine/process evidence and likely manufacturing cause."),
+            ("Design Agent", "Assess engineering-definition significance and required human gates."),
+        ]
 
 
 def pct(delta: float, base: float) -> float:
