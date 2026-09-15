@@ -2,16 +2,20 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-class NCRInput(BaseModel):
-    ncr_id: str = Field(default="NCR-2026-004381")
-    part: str = Field(default="Wing structural component")
-    operation: str = Field(default="Automated drilling")
-    deviation: str = Field(default="Hole diameter +0.18 mm above tolerance")
-    aircraft_config: str = Field(default="C128")
-    supplier_batch: str = Field(default="B-81932")
-    machine: str = Field(default="DRILL_CELL_07")
-    timestamp: str = Field(default="2026-09-15T08:42:31")
+Scenario = Literal["aerospace_ncr", "semiconductor_yield"]
+
+
+class CaseInput(BaseModel):
+    scenario: Scenario = "aerospace_ncr"
+    case_id: str = Field(default="NCR-2026-004381")
     severity: Literal["Low", "Medium", "High", "Critical"] = "High"
+    timestamp: str = Field(default="2026-09-15T08:42:31")
+    subject: str = Field(default="Wing structural component")
+    process: str = Field(default="Automated drilling")
+    asset: str = Field(default="DRILL_CELL_07")
+    batch: str = Field(default="B-81932")
+    deviation: str = Field(default="Hole diameter +0.18 mm above tolerance")
+    configuration: str = Field(default="C128")
     notes: str = Field(default="Deviation detected during in-process dimensional inspection.")
 
 
@@ -54,7 +58,7 @@ class InvestigationResult(BaseModel):
 
 
 class ComparisonResponse(BaseModel):
-    ncr: NCRInput
+    case: CaseInput
     baseline: InvestigationResult
     nifi: InvestigationResult
     headline: str
