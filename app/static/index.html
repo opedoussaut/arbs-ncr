@@ -1,0 +1,106 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>AeroNCR — Agent Benchmark</title>
+  <link rel="stylesheet" href="/static/styles.css" />
+</head>
+<body>
+  <div class="ambient ambient-a"></div>
+  <div class="ambient ambient-b"></div>
+  <div class="shell">
+    <aside class="sidebar glass">
+      <div class="brand">
+        <div class="brand-mark">A</div>
+        <div><strong>AeroNCR</strong><span>Agent benchmark</span></div>
+      </div>
+      <nav>
+        <button class="nav-item active"><span class="nav-icon">⌁</span>Investigation</button>
+        <button class="nav-item"><span class="nav-icon">◫</span>Benchmarks</button>
+        <button class="nav-item"><span class="nav-icon">◇</span>Evidence</button>
+      </nav>
+      <div class="sidebar-spacer"></div>
+      <div class="mode-card">
+        <div class="mode-dot" id="modeDot"></div>
+        <div><span>Runtime</span><strong id="runtimeMode">Checking…</strong></div>
+      </div>
+      <div class="side-note">Synthetic aerospace data only<br/>Human disposition remains mandatory.</div>
+    </aside>
+
+    <main>
+      <header class="topbar">
+        <div>
+          <div class="eyebrow">NON-CONFORMANCE INTELLIGENCE</div>
+          <h1>Investigate once.<br/><span>Benchmark twice.</span></h1>
+          <p>Run the same aerospace NCR through a conventional agent stack and a NiFi-assisted stack — then compare cost, context, latency and evidence quality.</p>
+        </div>
+        <div class="top-chip"><span class="pulse"></span> PoC v0.1</div>
+      </header>
+
+      <section class="card intake-card">
+        <div class="section-head">
+          <div>
+            <div class="eyebrow">CASE INTAKE</div>
+            <h2>New NCR</h2>
+          </div>
+          <button class="ghost" id="sampleBtn">Load sample</button>
+        </div>
+        <form id="ncrForm">
+          <div class="grid grid-4">
+            <label><span>NCR ID</span><input name="ncr_id" value="NCR-2026-004381" required></label>
+            <label><span>Severity</span><select name="severity"><option>Low</option><option>Medium</option><option selected>High</option><option>Critical</option></select></label>
+            <label><span>Aircraft configuration</span><input name="aircraft_config" value="C128"></label>
+            <label><span>Event timestamp</span><input name="timestamp" value="2026-09-15T08:42:31"></label>
+          </div>
+          <div class="grid grid-3">
+            <label><span>Part / assembly</span><input name="part" value="Wing structural component"></label>
+            <label><span>Operation</span><input name="operation" value="Automated drilling"></label>
+            <label><span>Machine / cell</span><input name="machine" value="DRILL_CELL_07"></label>
+          </div>
+          <div class="grid grid-2">
+            <label><span>Supplier batch</span><input name="supplier_batch" value="B-81932"></label>
+            <label><span>Deviation</span><input name="deviation" value="Hole diameter +0.18 mm above tolerance"></label>
+          </div>
+          <label><span>Context notes</span><textarea name="notes" rows="3">Deviation detected during in-process dimensional inspection.</textarea></label>
+          <div class="form-footer">
+            <div class="safety-line"><span>◉</span> No autonomous disposition — engineering approval gate enforced.</div>
+            <button class="primary" id="runBtn" type="submit"><span>Run dual investigation</span><b>→</b></button>
+          </div>
+        </form>
+      </section>
+
+      <section id="emptyState" class="empty-state">
+        <div class="empty-orbit"><div></div><span>✦</span></div>
+        <h3>Ready to investigate</h3>
+        <p>The two architectures will process the exact same NCR and evidence universe.</p>
+      </section>
+
+      <section id="results" class="results hidden">
+        <div class="comparison-hero card">
+          <div>
+            <div class="eyebrow">BENCHMARK SIGNAL</div>
+            <h2 id="headline">—</h2>
+          </div>
+          <div class="hero-stats">
+            <div><strong id="costSaving">—</strong><span>cost delta</span></div>
+            <div><strong id="tokenSaving">—</strong><span>context reduction</span></div>
+            <div><strong id="toolSaving">—</strong><span>tool-call reduction</span></div>
+          </div>
+        </div>
+
+        <div class="lanes">
+          <article class="lane card baseline" id="baselineLane"></article>
+          <article class="lane card nifi" id="nifiLane"></article>
+        </div>
+
+        <div class="card benchmark-card">
+          <div class="section-head"><div><div class="eyebrow">SIDE-BY-SIDE</div><h2>Benchmark telemetry</h2></div><span class="microcopy">Same case · same model · same safety gate</span></div>
+          <div class="metric-table" id="metricTable"></div>
+        </div>
+      </section>
+    </main>
+  </div>
+  <script src="/static/app.js"></script>
+</body>
+</html>
