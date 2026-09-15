@@ -32,39 +32,51 @@
       <header class="topbar">
         <div>
           <div class="eyebrow">LEAN AGENTIC INTELLIGENCE</div>
-          <h1>Investigate once.<br/><span>Benchmark twice.</span></h1>
-          <p>Run the same case through a conventional agent stack and a NiFi-assisted stack — then compare cost, context, latency and evidence quality.</p>
+          <h1>Less noise.<br/><span>More reasoning.</span></h1>
+          <p>Compare a conventional agent stack with a lean architecture where deterministic preprocessing turns raw enterprise data and K&amp;KH into a compact evidence pack before agents reason.</p>
         </div>
-        <div class="top-chip"><span class="pulse"></span> PoC v0.1</div>
+        <div class="top-chip"><span class="pulse"></span> PoC v0.2</div>
       </header>
 
       <section class="card intake-card">
-        <div class="section-head">
-          <div>
-            <div class="eyebrow">CASE INTAKE</div>
-            <h2>New NCR</h2>
-          </div>
-          <button class="ghost" id="sampleBtn">Load sample</button>
+        <div class="scenario-switch" role="group" aria-label="Benchmark scenario">
+          <button type="button" class="scenario-btn active" data-scenario="aerospace_ncr">
+            <span class="scenario-icon">✈</span><span><b>Aerospace</b><small>Non-conformance investigation</small></span>
+          </button>
+          <button type="button" class="scenario-btn" data-scenario="ai_factory_anomaly">
+            <span class="scenario-icon">⌘</span><span><b>High-Tech · AI Factory</b><small>GPU infrastructure anomaly</small></span>
+          </button>
         </div>
-        <form id="ncrForm">
+
+        <div class="section-head case-head">
+          <div>
+            <div class="eyebrow" id="domainEyebrow">AEROSPACE QUALITY</div>
+            <h2 id="caseTitle">New NCR</h2>
+            <p class="case-description" id="caseDescription">Investigate a dimensional non-conformance using quality, manufacturing, engineering and historical knowledge.</p>
+          </div>
+          <button class="ghost" id="sampleBtn" type="button">Reset sample</button>
+        </div>
+
+        <form id="caseForm">
+          <input type="hidden" name="scenario" value="aerospace_ncr" />
           <div class="grid grid-4">
-            <label><span>NCR ID</span><input name="ncr_id" value="NCR-2026-004381" required></label>
+            <label><span id="caseIdLabel">NCR ID</span><input name="case_id" value="NCR-2026-004381" required></label>
             <label><span>Severity</span><select name="severity"><option>Low</option><option>Medium</option><option selected>High</option><option>Critical</option></select></label>
-            <label><span>Aircraft configuration</span><input name="aircraft_config" value="C128"></label>
+            <label><span id="configurationLabel">Aircraft configuration</span><input name="configuration" value="C128"></label>
             <label><span>Event timestamp</span><input name="timestamp" value="2026-09-15T08:42:31"></label>
           </div>
           <div class="grid grid-3">
-            <label><span>Part / assembly</span><input name="part" value="Wing structural component"></label>
-            <label><span>Operation</span><input name="operation" value="Automated drilling"></label>
-            <label><span>Machine / cell</span><input name="machine" value="DRILL_CELL_07"></label>
+            <label><span id="subjectLabel">Part / assembly</span><input name="subject" value="Wing structural component"></label>
+            <label><span id="processLabel">Operation</span><input name="process" value="Automated drilling"></label>
+            <label><span id="assetLabel">Machine / cell</span><input name="asset" value="DRILL_CELL_07"></label>
           </div>
           <div class="grid grid-2">
-            <label><span>Supplier batch</span><input name="supplier_batch" value="B-81932"></label>
-            <label><span>Deviation</span><input name="deviation" value="Hole diameter +0.18 mm above tolerance"></label>
+            <label><span id="batchLabel">Supplier batch</span><input name="batch" value="B-81932"></label>
+            <label><span id="deviationLabel">Deviation</span><input name="deviation" value="Hole diameter +0.18 mm above tolerance"></label>
           </div>
           <label><span>Context notes</span><textarea name="notes" rows="3">Deviation detected during in-process dimensional inspection.</textarea></label>
           <div class="form-footer">
-            <div class="safety-line"><span>◉</span> No autonomous disposition — engineering approval gate enforced.</div>
+            <div class="safety-line" id="safetyText"><span>◉</span> No autonomous disposition — engineering approval gate enforced.</div>
             <button class="primary" id="runBtn" type="submit"><span>Run dual investigation</span><b>→</b></button>
           </div>
         </form>
@@ -73,7 +85,7 @@
       <section id="emptyState" class="empty-state">
         <div class="empty-orbit"><div></div><span>✦</span></div>
         <h3>Ready to investigate</h3>
-        <p>The two architectures will process the exact same case and evidence universe.</p>
+        <p>Both architectures receive the exact same synthetic case, corpus and operational evidence.</p>
       </section>
 
       <section id="results" class="results hidden">
@@ -95,7 +107,7 @@
         </div>
 
         <div class="card benchmark-card">
-          <div class="section-head"><div><div class="eyebrow">SIDE-BY-SIDE</div><h2>Benchmark telemetry</h2></div><span class="microcopy">Same case · same model · same safety gate</span></div>
+          <div class="section-head"><div><div class="eyebrow">SIDE-BY-SIDE</div><h2>Benchmark telemetry</h2></div><span class="microcopy">Same case · same model · same evidence universe · same human gate</span></div>
           <div class="metric-table" id="metricTable"></div>
         </div>
       </section>
