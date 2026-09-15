@@ -1,0 +1,28 @@
+services:
+  app:
+    build: .
+    ports:
+      - "8088:8088"
+    environment:
+      OPENAI_API_KEY: ${OPENAI_API_KEY:-}
+      OPENAI_MODEL: ${OPENAI_MODEL:-gpt-5.6-luna}
+      NIFI_MODE: ${NIFI_MODE:-emulated}
+      NIFI_BASE_URL: https://nifi:8443/nifi-api
+      NIFI_USERNAME: ${NIFI_USERNAME:-admin}
+      NIFI_PASSWORD: ${NIFI_PASSWORD:-ChangeMeAeroNCR2026!}
+      NIFI_VERIFY_TLS: "false"
+    depends_on:
+      - nifi
+
+  nifi:
+    image: apache/nifi:2.11.0
+    ports:
+      - "8443:8443"
+    environment:
+      SINGLE_USER_CREDENTIALS_USERNAME: ${NIFI_USERNAME:-admin}
+      SINGLE_USER_CREDENTIALS_PASSWORD: ${NIFI_PASSWORD:-ChangeMeAeroNCR2026!}
+    volumes:
+      - nifi_state:/opt/nifi/nifi-current/state
+
+volumes:
+  nifi_state:
