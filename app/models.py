@@ -2,7 +2,7 @@ from typing import Literal
 from pydantic import BaseModel, Field
 
 
-Scenario = Literal["aerospace_ncr", "semiconductor_yield"]
+Scenario = Literal["aerospace_ncr", "ai_factory_anomaly"]
 
 
 class CaseInput(BaseModel):
