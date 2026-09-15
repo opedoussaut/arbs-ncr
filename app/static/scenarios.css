@@ -1,0 +1,9 @@
+.scenario-switch{display:grid;grid-template-columns:1fr 1fr;gap:7px;padding:5px;margin-bottom:26px;border-radius:20px;background:rgba(0,0,0,.045);border:1px solid rgba(0,0,0,.035)}
+.scenario-btn{display:flex;align-items:center;gap:11px;border:0;background:transparent;color:#66666b;border-radius:16px;padding:12px 14px;text-align:left;cursor:pointer;transition:.18s ease}
+.scenario-btn:hover{background:rgba(255,255,255,.55)}
+.scenario-btn.active{background:rgba(255,255,255,.94);color:#151516;box-shadow:0 7px 22px rgba(0,0,0,.08),inset 0 0 0 1px rgba(255,255,255,.9)}
+.scenario-btn b,.scenario-btn small{display:block}.scenario-btn b{font-size:12px;letter-spacing:-.01em}.scenario-btn small{font-size:9px;color:#88888d;margin-top:2px}
+.scenario-icon{width:31px;height:31px;display:grid;place-items:center;border-radius:10px;background:rgba(0,0,0,.045);font-size:14px;font-weight:700}
+.scenario-btn.active .scenario-icon{background:linear-gradient(145deg,#e8f3ff,#ece9ff);color:#4058df}
+.case-head{margin-top:2px}.case-description{max-width:700px;margin:6px 0 0;color:#77777c;font-size:12px;line-height:1.45}
+@media(max-width:720px){.scenario-switch{grid-template-columns:1fr}.scenario-btn{padding:11px 12px}}
