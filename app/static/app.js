@@ -12,7 +12,16 @@ const scenarios = {
         caseId: 'NCR ID', configuration: 'Aircraft configuration', subject: 'Part / assembly',
         process: 'Operation', asset: 'Machine / cell', batch: 'Supplier batch', deviation: 'Deviation'
       },
-      safety: 'No autonomous disposition — engineering approval gate enforced.'
+      safety: 'No autonomous disposition — engineering approval gate enforced.',
+      sourceTitle: 'Aerospace evidence sources',
+      sources: [
+        ['Quality records','NCR history, inspection results, dispositions'],
+        ['Machine telemetry','Spindle, vibration, tool cycles, process signals'],
+        ['MES / work orders','Operation, machine, tool and program context'],
+        ['Engineering definition','Current drawing, tolerances, criticality'],
+        ['Supplier data','Batch, certificate and incoming inspection'],
+        ['K&KH corpus','Rules, troubleshooting guidance and lessons learned']
+      ]
     },
     sample: {
       scenario:'aerospace_ncr', case_id:'NCR-2026-004381', severity:'High', configuration:'C128', timestamp:'2026-09-15T08:42:31',
@@ -29,7 +38,18 @@ const scenarios = {
         caseId: 'Incident ID', configuration: 'Rack profile', subject: 'Affected resource',
         process: 'Workload / process', asset: 'Rack / asset', batch: 'Pod / cluster', deviation: 'Observed anomaly'
       },
-      safety: 'No autonomous infrastructure intervention — Operations approval gate enforced.'
+      safety: 'No autonomous infrastructure intervention — Operations approval gate enforced.',
+      sourceTitle: 'AI Factory evidence sources',
+      sources: [
+        ['GPU / rack telemetry','GPU, HBM, inlet temperatures, power and throttling'],
+        ['Cooling / CDU','Flow, supply/return temperatures, pressure and alarms'],
+        ['Network fabric','Link utilization, errors, retransmits and congestion'],
+        ['DCIM / facilities','Rack power, environmental and infrastructure events'],
+        ['Workload telemetry','Training throughput, utilization and job behavior'],
+        ['Configuration / BOM','Rack topology, limits, firmware and infrastructure definition'],
+        ['Historical incidents','Prior thermal, power and network investigations'],
+        ['K&KH corpus','Operating standards, runbooks, rules and lessons learned']
+      ]
     },
     sample: {
       scenario:'ai_factory_anomaly', case_id:'AIF-INC-2026-0017', severity:'High', configuration:'72-GPU liquid-cooled rack', timestamp:'2026-09-15T08:42:31',
@@ -41,9 +61,12 @@ const scenarios = {
 };
 
 let currentScenario = 'aerospace_ncr';
+let lastResult = null;
 
 async function init(){
   applyScenario(currentScenario, true);
+  showView('investigation');
+  resetSecondaryViews();
   try{
     const h = await fetch('/api/health').then(r=>r.json());
     $('#runtimeMode').textContent = h.llm_mode === 'live' ? 'Live LLM' : 'Simulation';
@@ -51,12 +74,25 @@ async function init(){
   }catch{ $('#runtimeMode').textContent = 'Offline'; }
 }
 
+$$('.nav-item').forEach(btn => btn.addEventListener('click', () => showView(btn.dataset.view)));
+$$('[data-go]').forEach(btn => btn.addEventListener('click', () => showView(btn.dataset.go)));
+
+function showView(view){
+  $$('.app-view').forEach(v => v.classList.add('hidden'));
+  const target = $(`#${view}View`);
+  if(target) target.classList.remove('hidden');
+  $$('.nav-item').forEach(btn => btn.classList.toggle('active', btn.dataset.view === view));
+  window.scrollTo({top:0, behavior:'smooth'});
+}
+
 $$('.scenario-btn').forEach(btn => btn.addEventListener('click', () => {
   currentScenario = btn.dataset.scenario;
   $$('.scenario-btn').forEach(x => x.classList.toggle('active', x === btn));
   applyScenario(currentScenario, true);
+  lastResult = null;
   $('#results').classList.add('hidden');
   $('#emptyState').classList.remove('hidden');
+  resetSecondaryViews();
 }));
 
 $('#sampleBtn').addEventListener('click', () => applyScenario(currentScenario, true));
@@ -76,13 +112,33 @@ function applyScenario(key, loadSample=false){
   $('#batchLabel').textContent = m.labels.batch;
   $('#deviationLabel').textContent = m.labels.deviation;
   $('#safetyText').innerHTML = `<span>◉</span> ${escapeHtml(m.safety)}`;
+  renderSourceUniverse();
   if(loadSample){
     Object.entries(cfg.sample).forEach(([k,v])=>{ const el=form.elements[k]; if(el) el.value=v; });
   }
 }
 
+function renderSourceUniverse(){
+  const m = scenarios[currentScenario].meta;
+  $('#sourceUniverseTitle').textContent = m.sourceTitle;
+  $('#sourceGrid').innerHTML = m.sources.map(([name,detail],i) => `
+    <div class="source-item"><span class="source-index">${String(i+1).padStart(2,'0')}</span><div><strong>${escapeHtml(name)}</strong><p>${escapeHtml(detail)}</p></div></div>
+  `).join('');
+}
+
+function resetSecondaryViews(){
+  $('#benchmarkSummary').innerHTML = `<div class="benchmark-placeholder"><span>◫</span><div><strong>No benchmark run yet</strong><p>Run an investigation first. The measurements will appear here automatically.</p></div></div>`;
+  $('#metricTable').innerHTML = `<div class="secondary-empty">No telemetry yet.</div>`;
+  $('#baselineEvidence').className = 'evidence-placeholder';
+  $('#baselineEvidence').textContent = 'Run an investigation to populate the retrieval trace.';
+  $('#leanEvidence').className = 'evidence-placeholder';
+  $('#leanEvidence').textContent = 'Run an investigation to populate the Lean evidence pack provenance.';
+  renderSourceUniverse();
+}
+
 form.addEventListener('submit', async (e)=>{
   e.preventDefault();
+  showView('investigation');
   const btn=$('#runBtn'); btn.disabled=true; btn.querySelector('span').textContent='Investigating…';
   $('#emptyState').classList.add('hidden'); $('#results').classList.remove('hidden');
   $('#headline').textContent='Both architectures are investigating the same corpus and operational evidence…';
@@ -90,16 +146,20 @@ form.addEventListener('submit', async (e)=>{
   const steps = currentScenario === 'ai_factory_anomaly' ? 5 : 4;
   $('#baselineLane').innerHTML=loadingLane('A','Agent-only baseline','Agents retrieve and reduce raw evidence',steps);
   $('#nifiLane').innerHTML=loadingLane('L','Lean / NiFi-assisted','Deterministic layer prepares the evidence pack',steps);
+  $('#benchmarkSummary').innerHTML = `<div class="benchmark-placeholder"><span class="mini-spinner">◌</span><div><strong>Benchmark running…</strong><p>Waiting for both architectures to complete.</p></div></div>`;
   $('#metricTable').innerHTML='';
   const data = Object.fromEntries(new FormData(form).entries());
   try{
     const res=await fetch('/api/investigate',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(data)});
     if(!res.ok) throw new Error(await res.text());
-    const out=await res.json(); render(out);
+    const out=await res.json();
+    lastResult = out;
+    render(out);
   }catch(err){
     $('#headline').textContent='Investigation failed';
     $('#baselineLane').innerHTML=`<div class="finding"><strong>Runtime error</strong><p>${escapeHtml(err.message)}</p></div>`;
     $('#nifiLane').innerHTML='';
+    $('#benchmarkSummary').innerHTML = `<div class="benchmark-placeholder"><span>!</span><div><strong>Benchmark failed</strong><p>${escapeHtml(err.message)}</p></div></div>`;
   }finally{btn.disabled=false;btn.querySelector('span').textContent='Run dual investigation';}
 });
 
@@ -116,6 +176,32 @@ function render(out){
   $('#baselineLane').innerHTML=laneHtml(out.baseline,'A','Agents query raw sources + corpus directly');
   $('#nifiLane').innerHTML=laneHtml(out.nifi,'L','NiFi prepares a lean, governed context pack');
   renderMetrics(out.baseline.metrics,out.nifi.metrics);
+  renderBenchmarkSummary(out);
+  renderEvidence(out);
+}
+
+function renderBenchmarkSummary(out){
+  $('#benchmarkSummary').innerHTML = `
+    <div class="benchmark-run-head"><div><div class="eyebrow">LATEST RUN</div><h2>${escapeHtml(out.case.case_id)}</h2><p>${escapeHtml(out.case.deviation)}</p></div><span class="run-badge">${out.case.scenario === 'ai_factory_anomaly' ? 'AI Factory' : 'Aerospace'}</span></div>
+    <div class="benchmark-highlight-grid">
+      <div><strong>${fmtPct(out.token_reduction_pct)}</strong><span>agent input context</span></div>
+      <div><strong>${fmtPct(out.tool_call_reduction_pct)}</strong><span>agent-facing tool calls</span></div>
+      <div><strong>${fmtPct(out.latency_reduction_pct)}</strong><span>modeled latency</span></div>
+      <div><strong>${fmtPct(out.savings_pct)}</strong><span>estimated LLM cost</span></div>
+    </div>`;
+}
+
+function renderEvidence(out){
+  const baseline = out.baseline.evidence || [];
+  const lean = out.nifi.evidence || [];
+  $('#baselineEvidence').className = 'evidence-list';
+  $('#baselineEvidence').innerHTML = baseline.length ? baseline.map((e,i)=>evidenceRow(i,e,'raw')).join('') : '<div class="secondary-empty">No retrieval trace returned.</div>';
+  $('#leanEvidence').className = 'evidence-list';
+  $('#leanEvidence').innerHTML = lean.length ? lean.map((e,i)=>evidenceRow(i,e,'lean')).join('') : '<div class="secondary-empty">No provenance returned.</div>';
+}
+
+function evidenceRow(i,text,type){
+  return `<div class="evidence-row"><span class="evidence-dot ${type}"></span><div><small>${type === 'lean' ? 'PROVENANCE' : 'RETRIEVAL'} ${String(i+1).padStart(2,'0')}</small><p>${escapeHtml(text)}</p></div></div>`;
 }
 
 function laneHtml(r,letter,subtitle){
@@ -134,8 +220,7 @@ function laneHtml(r,letter,subtitle){
     <div><strong>${m.tool_calls}</strong><span>tool calls</span></div>
     <div><strong>${formatBytes(m.context_bytes)}</strong><span>agent context</span></div>
     <div><strong>${formatMoney(m.estimated_cost_usd)}</strong><span>LLM cost*</span></div>
-  </div>
-  <details class="provenance"><summary>${r.lane==='nifi'?'Lean preprocessing provenance':'Retrieval trace'}</summary><ul>${r.evidence.map(e=>`<li>${escapeHtml(e)}</li>`).join('')}</ul></details>`;
+  </div>`;
 }
 
 function renderMetrics(b,n){
