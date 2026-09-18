@@ -21,6 +21,7 @@
         <button class="nav-item active" data-view="investigation"><span class="nav-icon">⌁</span>Investigation</button>
         <button class="nav-item" data-view="benchmarks"><span class="nav-icon">◫</span>Benchmarks</button>
         <button class="nav-item" data-view="evidence"><span class="nav-icon">◇</span>Evidence</button>
+        <button class="nav-item" data-view="calibration"><span class="nav-icon">◎</span>Calibration</button>
       </nav>
       <div class="sidebar-spacer"></div>
       <div class="mode-card">
@@ -38,7 +39,7 @@
             <h1>Less noise.<br/><span>More reasoning.</span></h1>
             <p>Compare a conventional agent stack with a lean architecture where deterministic preprocessing turns raw enterprise data and K&amp;KH into a compact evidence pack before agents reason.</p>
           </div>
-          <div class="top-chip"><span class="pulse"></span> PoC v0.3</div>
+          <div class="top-chip"><span class="pulse"></span> PoC v0.4</div>
         </header>
 
         <section class="card intake-card">
@@ -158,6 +159,31 @@
             <div class="evidence-card-head"><span class="evidence-badge">L</span><div><h2>Lean preprocessing provenance</h2><p>What the deterministic layer selected, correlated and passed forward.</p></div></div>
             <div id="leanEvidence" class="evidence-placeholder">Run an investigation to populate the Lean evidence pack provenance.</div>
           </article>
+        </div>
+      </section>
+
+      <section class="app-view hidden" id="calibrationView">
+        <header class="view-header">
+          <div>
+            <div class="eyebrow">TRUST THE PROBABILITIES?</div>
+            <h1>Calibration.</h1>
+            <p>Measure whether structured confidence is honest. Compare Jev with an open zero-shot control on labeled industrial smoke-test cases using accuracy, Expected Calibration Error, Brier score and negative log loss.</p>
+          </div>
+          <button class="ghost view-action" type="button" data-go="investigation">Back to investigation</button>
+        </header>
+        <div class="card calibration-card">
+          <div class="calibration-toolbar">
+            <div>
+              <div class="eyebrow">LABELED SMOKE TEST</div>
+              <h2>Reliability before speed.</h2>
+              <p>This is deliberately a small architecture test. For a real deployment decision, replace it with at least 300 representative labeled examples from the target process.</p>
+            </div>
+            <button class="primary" id="runCalibrationBtn" type="button"><span>Run calibration smoke test</span><b>→</b></button>
+          </div>
+          <div id="calibrationResults" class="benchmark-placeholder">
+            <span>◎</span>
+            <div><strong>No calibration run yet</strong><p>Run the smoke test to compare probability quality. Simulated adapters are labeled as such and are not model evidence.</p></div>
+          </div>
         </div>
       </section>
     </main>
