@@ -455,6 +455,157 @@ class InvestigationEngine:
             },
         )
 
+    async def _run_classifier_lane(self, case: CaseInput, source: dict) -> InvestigationResult:
+        started = time.perf_counter()
+        source_blob = json.dumps(source)
+        lean_state, provenance = nifi_reduce(source)
+        context_blob = json.dumps(lean_state)
+        ai_factory = case.scenario == "ai_factory_anomaly"
+
+        questions = self._jev_questions(case.scenario)
+        decision = await self.classifier.evaluate(lean_state, questions, scenario=case.scenario)
+        answers = decision.answers
+        root = answers.get("primary_cause", {})
+        root_choice = str(root.get("choice", "unknown"))
+        root_confidence = confidence_of(root)
+        ambiguity_probability = float((answers.get("requires_frontier_reasoning") or {}).get("noul", 0.5))
+        escalated = (
+            root_confidence < self.jev_confidence_threshold
+            or ambiguity_probability >= self.jev_escalation_probability
+        )
+
+        if ai_factory:
+            mapping = {
+                "cooling_flow": ("Cooling branch restriction / CDU flow imbalance", "Validate branch flow, valve state and neighboring racks before changing compute or network settings."),
+                "power": ("Power-delivery or rack power-cap constraint", "Validate rack/PDU power envelope and cap events before intervention."),
+                "network": ("Network fabric degradation", "Validate fabric errors, retries and affected links before changing compute settings."),
+                "workload": ("Workload / scheduler-driven degradation", "Compare scheduler placement and workload behavior with known-good runs."),
+                "hardware": ("GPU / rack hardware fault", "Isolate affected hardware and follow the authorized diagnostic workflow."),
+                "unknown": ("Unresolved infrastructure cause", "Escalate the lean evidence pack for deeper reasoning and human investigation."),
+            }
+            human_gate = "Infrastructure Operations must approve workload drain and any cooling-loop intervention."
+        else:
+            mapping = {
+                "tool_wear_spindle": ("Progressive tool wear / spindle drift", "Verify tool condition and spindle calibration; inspect adjacent holes and same-tool output."),
+                "setup": ("Manufacturing setup / fixturing issue", "Verify fixture and setup conditions before disposition."),
+                "material": ("Incoming material / supplier-related cause", "Validate material lot, certificate and incoming inspection evidence."),
+                "measurement": ("Measurement-system issue", "Validate gage status, repeatability and an independent measurement."),
+                "programming": ("Process-program / parameter issue", "Verify program revision and process parameters against the approved definition."),
+                "unknown": ("Unresolved manufacturing cause", "Escalate the lean evidence pack for deeper quality/manufacturing investigation."),
+            }
+            human_gate = "Final disposition requires authorized Quality/Engineering approval."
+
+        likely_cause, recommendation = mapping.get(root_choice, mapping["unknown"])
+        severity = answers.get("severity", {})
+        severity_score = severity.get("score", "n/a")
+        steps = [
+            AgentStep(
+                agent="Lean",
+                title="Lean state preparation",
+                detail="NiFi-style deterministic preprocessing produced the compact state used by the open decision model.",
+                evidence_count=len(provenance),
+                duration_ms=110,
+            ),
+            AgentStep(
+                agent="Classifier",
+                title="Open zero-shot decisions",
+                detail=(
+                    f"Primary cause={root_choice} ({root_confidence:.0%} confidence); "
+                    f"severity score={severity_score}; frontier-reasoning need={ambiguity_probability:.0%}."
+                ),
+                evidence_count=len(provenance),
+                duration_ms=decision.stats.latency_ms,
+            ),
+        ]
+
+        frontier_stats = LLMStats()
+        if escalated:
+            synthesis, frontier_stats = await self.reasoner.ask(
+                "Escalation Reasoning Agent",
+                {
+                    "case": case.model_dump(),
+                    "lean_state": lean_state,
+                    "classifier_answers": answers,
+                    "provenance": provenance,
+                },
+                "Resolve the remaining ambiguity, state the safest working hypothesis, and identify what a human must verify next.",
+            )
+            steps.append(AgentStep(
+                agent="Supervisor",
+                state="warning",
+                title="Frontier escalation",
+                detail=synthesis,
+                evidence_count=len(provenance),
+                duration_ms=850,
+            ))
+            summary = f"The open classifier crossed the escalation policy. {synthesis}"
+        else:
+            summary = (
+                f"The open classifier selected {likely_cause} with {root_confidence:.0%} confidence. "
+                "No frontier LLM call was required."
+            )
+
+        steps.append(AgentStep(
+            agent="Human",
+            state="info",
+            title="Human workflow gate",
+            detail=human_gate,
+            evidence_count=0,
+            duration_ms=0,
+        ))
+
+        elapsed_real = int((time.perf_counter() - started) * 1000)
+        live_any = decision.live or (escalated and self.reasoner.live)
+        modeled_latency = 190 + decision.stats.latency_ms + (1100 if escalated else 0)
+        total_input = decision.stats.input_tokens + frontier_stats.input_tokens
+        total_output = decision.stats.output_tokens + frontier_stats.output_tokens
+        total_cost = decision.stats.cost_usd + frontier_stats.cost_usd
+
+        evidence = provenance + [
+            f"Open model: {decision.model}",
+            f"Primary cause decision: {root_choice} ({root_confidence:.0%} confidence)",
+            f"Frontier reasoning probability: {ambiguity_probability:.0%}",
+            f"Escalation policy: confidence < {self.jev_confidence_threshold:.0%} or ambiguity >= {self.jev_escalation_probability:.0%}",
+            "Frontier escalation triggered" if escalated else "Frontier escalation avoided",
+        ]
+
+        return InvestigationResult(
+            lane="jev",
+            title="Lean + open zero-shot",
+            summary=summary,
+            confidence=root_confidence,
+            likely_cause=likely_cause,
+            recommendation=recommendation,
+            human_gate=human_gate,
+            steps=steps,
+            metrics=Metrics(
+                source_bytes=len(source_blob.encode()),
+                context_bytes=len(context_blob.encode()),
+                estimated_input_tokens=total_input,
+                output_tokens=total_output,
+                llm_calls=decision.stats.calls + frontier_stats.calls,
+                tool_calls=1,
+                api_calls=8 if ai_factory else 6,
+                deterministic_steps=12 if ai_factory else 9,
+                retries=0,
+                latency_ms=elapsed_real if live_any else modeled_latency,
+                estimated_cost_usd=round(total_cost, 6),
+                evidence_precision=.94 if ai_factory else .92,
+                mode="live" if decision.live else "simulated",
+                frontier_llm_calls=frontier_stats.calls,
+                decision_model_calls=decision.stats.calls,
+            ),
+            evidence=evidence,
+            decisions={
+                "model": decision.model,
+                "answers": answers,
+                "escalated": escalated,
+                "confidence_threshold": self.jev_confidence_threshold,
+                "escalation_probability": self.jev_escalation_probability,
+                "provider": "open-zero-shot",
+            },
+        )
+
     @staticmethod
     def _jev_questions(scenario: str) -> dict[str, Any]:
         if scenario == "ai_factory_anomaly":
