@@ -570,7 +570,7 @@ class InvestigationEngine:
         ]
 
         return InvestigationResult(
-            lane="jev",
+            lane="classifier",
             title="Lean + open zero-shot",
             summary=summary,
             confidence=root_confidence,
