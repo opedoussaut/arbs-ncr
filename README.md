@@ -4,10 +4,10 @@ Lean AI is a side-by-side benchmark PoC that tests one simple hypothesis:
 
 > **Agents should spend tokens on reasoning, not on deterministic data reduction.**
 
-The application runs the same industrial case through two architectures:
+The application runs the same industrial case through three architectures:
 
 1. **Agent-only baseline** — agents query a broad raw source universe and the K&KH corpus directly.
-2. **Lean / NiFi-assisted** — a deterministic dataflow first filters, correlates, normalizes and contextualizes the same evidence, then gives the agents a compact evidence pack.
+2. **Lean / NiFi-assisted** — a deterministic dataflow first filters, correlates, normalizes and contextualizes the same evidence, then gives the agents a compact evidence pack.\n3. **Lean + Jev** — the same lean evidence state is evaluated as parallel typed decisions; a frontier reasoner is called only when confidence/ambiguity crosses a configurable escalation policy.
 
 The goal is to measure when a dedicated deterministic preprocessing layer reduces context, tool calls, latency and LLM cost without losing decision-relevant evidence.
 
@@ -58,7 +58,7 @@ The synthetic evidence is deliberately constructed so the agents must distinguis
 - Deterministic NiFi emulation: filtering, correlation, normalization, aggregation and provenance
 - K&KH corpus retrieval in both scenarios
 - Benchmark metrics: input tokens, tool/API calls, context size, modeled/live latency, evidence precision and estimated LLM cost
-- Optional real OpenAI Responses API calls when `OPENAI_API_KEY` is set
+- Optional real OpenAI Responses API calls when `OPENAI_API_KEY` is set\n- Optional live TypeSafe Jev decisions when `TYPESAFE_API_KEY` is set\n- Jev decision trace: typed answers, confidence/probabilities and explicit frontier-escalation policy
 - Docker Compose scaffold with Apache NiFi
 - Automated tests for both domains
 
@@ -136,3 +136,4 @@ For each run, both lanes use the same:
 The experimental variable is **where deterministic reduction/correlation happens**.
 
 Simulation numbers are illustrative and must not be presented as measured production savings. The project is designed so those metrics can later be replaced with real token, latency, infrastructure and cost measurements.
+\n\n## Jev decision layer\n\nThe third lane sends the deterministic Lean state to Jev as one shared `state` with parallel `choice`, `score` and `noul` questions. The application uses Jev for cause classification, severity scoring, uncertainty gating and human-review gating. If the primary decision confidence falls below `JEV_CONFIDENCE_THRESHOLD` or the `requires_frontier_reasoning` probability reaches `JEV_ESCALATION_PROBABILITY`, the lane escalates once to the existing frontier reasoner.\n\nWithout `TYPESAFE_API_KEY`, the lane is explicitly marked **simulated** and uses deterministic synthetic decisions so the architecture and UI remain testable. Live measurements should be treated as local evaluation data; review your TypeSafe agreement before publishing provider benchmark/performance results.\n
