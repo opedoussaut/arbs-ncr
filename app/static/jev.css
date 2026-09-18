@@ -1,0 +1,10 @@
+.lanes.jev-enabled{grid-template-columns:repeat(3,minmax(0,1fr))}
+.jev .lane-logo{background:linear-gradient(145deg,#e3f8ef,#e8f1ff);color:#087b58}
+.jev .finding{background:linear-gradient(145deg,#111,#17332a)}
+.evidence-columns.jev-enabled{grid-template-columns:repeat(3,minmax(0,1fr))}
+.jev-evidence .evidence-badge{background:linear-gradient(145deg,#e3f8ef,#e8f1ff);color:#087b58}
+.evidence-dot.jev{background:#0a9b62}
+.jev-summary-grid{grid-template-columns:repeat(5,minmax(0,1fr))}
+#metricTable .metric-row{grid-template-columns:1.45fr repeat(3,1fr) .72fr}
+@media(max-width:1320px){.lanes.jev-enabled,.evidence-columns.jev-enabled{grid-template-columns:1fr 1fr}.jev{grid-column:1/-1}.jev-evidence{grid-column:1/-1}.jev-summary-grid{grid-template-columns:repeat(3,1fr)}}
+@media(max-width:900px){.lanes.jev-enabled,.evidence-columns.jev-enabled{grid-template-columns:1fr}.jev{grid-column:auto}.jev-evidence{grid-column:auto}.jev-summary-grid{grid-template-columns:1fr 1fr}#metricTable .metric-row{grid-template-columns:1.35fr 1fr 1fr 1fr}.metric-delta{display:none}}
