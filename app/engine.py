@@ -17,6 +17,7 @@ except ImportError:
 
 from .data_factory import build_source_universe, nifi_reduce
 from .jev import JevClient, answer_confidence
+from .zero_shot import ZeroShotClient, confidence_of
 from .models import AgentStep, CaseInput, ComparisonResponse, InvestigationResult, Metrics
 
 
@@ -95,35 +96,38 @@ class InvestigationEngine:
     def __init__(self):
         self.reasoner = Reasoner()
         self.jev = JevClient()
+        self.classifier = ZeroShotClient()
         self.jev_confidence_threshold = float(os.getenv("JEV_CONFIDENCE_THRESHOLD", "0.80"))
         self.jev_escalation_probability = float(os.getenv("JEV_ESCALATION_PROBABILITY", "0.50"))
 
     async def compare(self, case: CaseInput) -> ComparisonResponse:
         source = build_source_universe(case)
-        baseline, nifi, jev = await asyncio.gather(
+        baseline, nifi, jev, classifier = await asyncio.gather(
             self._run_lane(case, source, "baseline"),
             self._run_lane(case, source, "nifi"),
             self._run_jev_lane(case, source),
+            self._run_classifier_lane(case, source),
         )
-        b, n, j = baseline.metrics, nifi.metrics, jev.metrics
+        b, n, j, z = baseline.metrics, nifi.metrics, jev.metrics, classifier.metrics
         savings = pct(b.estimated_cost_usd - n.estimated_cost_usd, b.estimated_cost_usd)
         token_red = pct(b.estimated_input_tokens - n.estimated_input_tokens, b.estimated_input_tokens)
         latency_red = pct(b.latency_ms - n.latency_ms, b.latency_ms)
         tool_red = pct(b.tool_calls - n.tool_calls, b.tool_calls)
         jev_cost_red = pct(n.estimated_cost_usd - j.estimated_cost_usd, n.estimated_cost_usd)
         jev_latency_red = pct(n.latency_ms - j.latency_ms, n.latency_ms)
+        classifier_cost_red = pct(n.estimated_cost_usd - z.estimated_cost_usd, n.estimated_cost_usd)
+        classifier_latency_red = pct(n.latency_ms - z.latency_ms, n.latency_ms)
         frontier_red = pct(n.frontier_llm_calls - j.frontier_llm_calls, n.frontier_llm_calls)
-        escalated = bool(jev.decisions.get("escalated"))
-        jev_signal = "escalated to frontier reasoning" if escalated else "resolved the structured decision without a frontier LLM call"
         headline = (
-            f"Lean preprocessing uses {token_red:.0f}% less agent input context; "
-            f"the Jev lane {jev_signal} in this {'live' if self.jev.live else 'simulated'} run."
+            f"Four architectures, one evidence universe: Lean preprocessing reduces agent context by {token_red:.0f}%, "
+            "while Jev and the open zero-shot control test whether structured decision models can avoid frontier reasoning."
         )
         return ComparisonResponse(
             case=case,
             baseline=baseline,
             nifi=nifi,
             jev=jev,
+            classifier=classifier,
             headline=headline,
             savings_pct=round(savings, 1),
             token_reduction_pct=round(token_red, 1),
@@ -132,6 +136,8 @@ class InvestigationEngine:
             jev_vs_nifi_cost_reduction_pct=round(jev_cost_red, 1),
             jev_vs_nifi_latency_reduction_pct=round(jev_latency_red, 1),
             frontier_call_reduction_pct=round(frontier_red, 1),
+            classifier_vs_nifi_cost_reduction_pct=round(classifier_cost_red, 1),
+            classifier_vs_nifi_latency_reduction_pct=round(classifier_latency_red, 1),
         )
 
     async def _run_lane(self, case: CaseInput, source: dict, lane: str) -> InvestigationResult:
