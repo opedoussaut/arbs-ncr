@@ -47,7 +47,7 @@ class Metrics(BaseModel):
 
 
 class InvestigationResult(BaseModel):
-    lane: Literal["baseline", "nifi", "jev"]
+    lane: Literal["baseline", "nifi", "jev", "classifier"]
     title: str
     summary: str
     confidence: float
