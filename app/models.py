@@ -65,6 +65,7 @@ class ComparisonResponse(BaseModel):
     baseline: InvestigationResult
     nifi: InvestigationResult
     jev: InvestigationResult
+    classifier: InvestigationResult
     headline: str
     savings_pct: float
     token_reduction_pct: float
@@ -73,3 +74,5 @@ class ComparisonResponse(BaseModel):
     jev_vs_nifi_cost_reduction_pct: float
     jev_vs_nifi_latency_reduction_pct: float
     frontier_call_reduction_pct: float
+    classifier_vs_nifi_cost_reduction_pct: float
+    classifier_vs_nifi_latency_reduction_pct: float
