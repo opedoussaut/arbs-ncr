@@ -1,4 +1,4 @@
-from typing import Literal
+from typing import Any, Literal
 from pydantic import BaseModel, Field
 
 
@@ -42,10 +42,12 @@ class Metrics(BaseModel):
     estimated_cost_usd: float
     evidence_precision: float
     mode: Literal["simulated", "live"]
+    frontier_llm_calls: int = 0
+    decision_model_calls: int = 0
 
 
 class InvestigationResult(BaseModel):
-    lane: Literal["baseline", "nifi"]
+    lane: Literal["baseline", "nifi", "jev", "classifier"]
     title: str
     summary: str
     confidence: float
@@ -55,14 +57,22 @@ class InvestigationResult(BaseModel):
     steps: list[AgentStep]
     metrics: Metrics
     evidence: list[str]
+    decisions: dict[str, Any] = Field(default_factory=dict)
 
 
 class ComparisonResponse(BaseModel):
     case: CaseInput
     baseline: InvestigationResult
     nifi: InvestigationResult
+    jev: InvestigationResult
+    classifier: InvestigationResult
     headline: str
     savings_pct: float
     token_reduction_pct: float
     latency_reduction_pct: float
     tool_call_reduction_pct: float
+    jev_vs_nifi_cost_reduction_pct: float
+    jev_vs_nifi_latency_reduction_pct: float
+    frontier_call_reduction_pct: float
+    classifier_vs_nifi_cost_reduction_pct: float
+    classifier_vs_nifi_latency_reduction_pct: float

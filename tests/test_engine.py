@@ -10,6 +10,10 @@ def assert_lean_lane_reduces_agent_work(out):
     assert out.nifi.metrics.evidence_precision > out.baseline.metrics.evidence_precision
     assert out.baseline.human_gate
     assert out.nifi.human_gate
+    assert out.jev.human_gate
+    assert out.classifier.human_gate
+    assert out.jev.metrics.decision_model_calls == 1
+    assert out.classifier.metrics.decision_model_calls == 1
 
 
 def test_aerospace_ncr_benchmark():
@@ -17,6 +21,7 @@ def test_aerospace_ncr_benchmark():
     out = asyncio.run(engine.compare(CaseInput()))
     assert out.case.scenario == "aerospace_ncr"
     assert any(step.agent == "Quality" for step in out.nifi.steps)
+    assert out.classifier.decisions["provider"] == "open-zero-shot"
     assert_lean_lane_reduces_agent_work(out)
 
 
@@ -39,4 +44,7 @@ def test_ai_factory_benchmark():
     assert any(step.agent == "Network" for step in out.nifi.steps)
     assert any(step.agent == "Knowledge" for step in out.nifi.steps)
     assert "Cooling" in out.nifi.likely_cause
+    assert "Cooling" in out.jev.likely_cause
+    assert "Cooling" in out.classifier.likely_cause
+    assert out.jev.decisions["escalated"] is False
     assert_lean_lane_reduces_agent_work(out)
