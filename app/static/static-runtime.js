@@ -76,9 +76,9 @@
       return {
         lane:'baseline', title:'Agent-only baseline',
         summary:'Agents retrieve, reduce and reason over the broad source universe directly.',
-        confidence:ai?.77:.78, likely_cause:s.cause, recommendation:s.recommendation, human_gate:s.gate,
+        confidence:ai ? .77 : .78, likely_cause:s.cause, recommendation:s.recommendation, human_gate:s.gate,
         steps:steps(s.baselineAgents,false),
-        metrics:metrics({source:s.source,context:s.rawContext,tokens:Math.round(s.rawContext/3.6),llm:s.baselineAgents.length,tools:ai?18:14,api:ai?18:14,steps:1,latency:ai?6900:5100,cost:ai?.31:.18,precision:ai?.56:.61,frontier:s.baselineAgents.length}),
+        metrics:metrics({source:s.source,context:s.rawContext,tokens:Math.round(s.rawContext/3.6),llm:s.baselineAgents.length,tools:ai?18:14,api:ai?18:14,steps:1,latency:ai?6900:5100,cost:ai ? .31 : .18,precision:ai ? .56 : .61,frontier:s.baselineAgents.length}),
         evidence:['Agent/tool layer queried raw operational sources and corpus directly']
       };
     }
@@ -86,9 +86,9 @@
       return {
         lane:'nifi', title:'Lean / NiFi-assisted',
         summary:'Deterministic preprocessing prepares a compact evidence pack before agent reasoning.',
-        confidence:ai?.90:.88, likely_cause:s.cause, recommendation:s.recommendation, human_gate:s.gate,
+        confidence:ai ? .90 : .88, likely_cause:s.cause, recommendation:s.recommendation, human_gate:s.gate,
         steps:steps(s.leanAgents,true),
-        metrics:metrics({source:s.source,context:s.leanContext,tokens:Math.round(s.leanContext/3.8),llm:s.leanAgents.length,tools:ai?3:2,api:ai?8:6,steps:ai?11:8,latency:ai?2100:1700,cost:ai?.034:.021,precision:ai?.94:.92,frontier:s.leanAgents.length}),
+        metrics:metrics({source:s.source,context:s.leanContext,tokens:Math.round(s.leanContext/3.8),llm:s.leanAgents.length,tools:ai?3:2,api:ai?8:6,steps:ai?11:8,latency:ai?2100:1700,cost:ai ? .034 : .021,precision:ai ? .94 : .92,frontier:s.leanAgents.length}),
         evidence:[
           'Filtered source telemetry to the event window',
           'Correlated operational records across the affected asset and configuration',
@@ -98,7 +98,7 @@
       };
     }
     if(lane==='jev'){
-      const conf=ai?.95:.91, ambiguity=ai?.12:.18;
+      const conf=ai ? .95 : .91, ambiguity=ai ? .12 : .18;
       return {
         lane:'jev', title:'Lean + Jev decision layer',
         summary:'Jev resolves the structured working decision without a frontier LLM call in this simulated architecture run.',
@@ -108,7 +108,7 @@
           {agent:'Jev',state:'done',title:'Parallel Jev decisions',detail:`Primary cause=${s.choice} (${Math.round(conf*100)}% confidence); ambiguity=${Math.round(ambiguity*100)}%.`,evidence_count:7,duration_ms:210},
           {agent:'Human',state:'info',title:'Human workflow gate',detail:s.gate,evidence_count:0,duration_ms:0}
         ],
-        metrics:metrics({source:s.source,context:s.leanContext,tokens:Math.round(s.leanContext/4),out:55,llm:1,tools:1,api:ai?8:6,steps:ai?12:9,latency:360,cost:.0006,precision:ai?.94:.92,frontier:0,decision:1}),
+        metrics:metrics({source:s.source,context:s.leanContext,tokens:Math.round(s.leanContext/4),out:55,llm:1,tools:1,api:ai?8:6,steps:ai?12:9,latency:360,cost:.0006,precision:ai ? .94 : .92,frontier:0,decision:1}),
         evidence:['Lean state prepared','Jev typed decisions evaluated','Confidence gate passed','Frontier reasoning avoided'],
         decisions:{model:'jev-simulated',escalated:false,confidence_threshold:.80,escalation_probability:.50,answers:{
           primary_cause:{type:'choice',choice:s.choice,confidence:conf,probabilities:{[s.choice]:conf,unknown:1-conf}},
@@ -117,7 +117,7 @@
         }}
       };
     }
-    const conf=ai?.84:.82, ambiguity=ai?.27:.30;
+    const conf=ai ? .84 : .82, ambiguity=ai ? .27 : .30;
     return {
       lane:'classifier', title:'Lean + open zero-shot',
       summary:'The open zero-shot control reaches the same structured decision surface without a frontier LLM call in this simulated architecture run.',
@@ -127,7 +127,7 @@
         {agent:'Classifier',state:'done',title:'Open zero-shot decisions',detail:`Primary cause=${s.choice} (${Math.round(conf*100)}% confidence); ambiguity=${Math.round(ambiguity*100)}%.`,evidence_count:7,duration_ms:260},
         {agent:'Human',state:'info',title:'Human workflow gate',detail:s.gate,evidence_count:0,duration_ms:0}
       ],
-      metrics:metrics({source:s.source,context:s.leanContext,tokens:Math.round(s.leanContext/4),out:55,llm:1,tools:1,api:ai?8:6,steps:ai?12:9,latency:450,cost:0,precision:ai?.94:.92,frontier:0,decision:1}),
+      metrics:metrics({source:s.source,context:s.leanContext,tokens:Math.round(s.leanContext/4),out:55,llm:1,tools:1,api:ai?8:6,steps:ai?12:9,latency:450,cost:0,precision:ai ? .94 : .92,frontier:0,decision:1}),
       evidence:['Lean state prepared','Open zero-shot typed decisions evaluated','Confidence gate passed','Frontier reasoning avoided'],
       decisions:{model:'zero-shot-simulated',provider:'open-zero-shot',escalated:false,confidence_threshold:.80,escalation_probability:.50,answers:{
         primary_cause:{type:'choice',choice:s.choice,confidence:conf,probabilities:{[s.choice]:conf,unknown:1-conf}},
