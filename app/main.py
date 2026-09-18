@@ -7,7 +7,7 @@ from .engine import InvestigationEngine
 from .models import CaseInput, ComparisonResponse
 
 BASE = Path(__file__).parent
-app = FastAPI(title="Lean AI Benchmark", version="0.2.0")
+app = FastAPI(title="Lean AI Benchmark", version="0.4.0")
 app.mount("/static", StaticFiles(directory=BASE / "static"), name="static")
 engine = InvestigationEngine()
 
@@ -22,6 +22,7 @@ async def health():
     return {
         "ok": True,
         "llm_mode": "live" if engine.reasoner.live else "simulated",
+        "jev_mode": "live" if engine.jev.live else "simulated",
         "scenarios": ["aerospace_ncr", "ai_factory_anomaly"],
     }
 
