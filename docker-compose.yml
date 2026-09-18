@@ -11,6 +11,8 @@ services:
       TYPESAFE_BASE_URL: ${TYPESAFE_BASE_URL:-https://api.typesafe.ai}
       JEV_CONFIDENCE_THRESHOLD: ${JEV_CONFIDENCE_THRESHOLD:-0.80}
       JEV_ESCALATION_PROBABILITY: ${JEV_ESCALATION_PROBABILITY:-0.50}
+      ZERO_SHOT_MODE: ${ZERO_SHOT_MODE:-simulated}
+      ZERO_SHOT_MODEL: ${ZERO_SHOT_MODEL:-facebook/bart-large-mnli}
       NIFI_MODE: ${NIFI_MODE:-emulated}
       NIFI_BASE_URL: https://nifi:8443/nifi-api
       NIFI_USERNAME: ${NIFI_USERNAME:-admin}
