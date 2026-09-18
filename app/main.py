@@ -4,6 +4,7 @@ from fastapi.responses import FileResponse
 from fastapi.staticfiles import StaticFiles
 
 from .engine import InvestigationEngine
+from .calibration import run_calibration
 from .models import CaseInput, ComparisonResponse
 
 BASE = Path(__file__).parent
@@ -23,6 +24,7 @@ async def health():
         "ok": True,
         "llm_mode": "live" if engine.reasoner.live else "simulated",
         "jev_mode": "live" if engine.jev.live else "simulated",
+        "classifier_mode": "live" if engine.classifier.live else "simulated",
         "scenarios": ["aerospace_ncr", "ai_factory_anomaly"],
     }
 
@@ -30,3 +32,8 @@ async def health():
 @app.post("/api/investigate", response_model=ComparisonResponse)
 async def investigate(case: CaseInput):
     return await engine.compare(case)
+
+
+@app.get("/api/calibration")
+async def calibration():
+    return await run_calibration(engine)
